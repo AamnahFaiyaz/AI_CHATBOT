@@ -1,0 +1,33 @@
+{
+  "manifest_version": "1.0.0",
+  "project": "Tata Steel Industrial IoT Chatbot",
+  "schema_definitions": {
+    "V_DEVIATION": {
+      "description": "Logs structural hardware anomalies, faults, and deviations across the facility.",
+      "columns": {
+        "START_TM": "TIMESTAMP - The exact date and time when the parameter fault occurred",
+        "PARAMETER": "VARCHAR - The name of the fault component parameter (voltage, gas, current)",
+        "SPAN": "NUMBER - The physical scale or numerical magnitude of the anomaly alert"
+      }
+    },
+    "V_SUMMARIZE_GASCUTTING_MACHINE": {
+      "description": "Tracks utility processing logs and travel metrics for gas cutters.",
+      "columns": {
+        "MACHINE_NAME": "VARCHAR - The physical identifier of the cutter asset (e.g., GasCutting1)",
+        "NET_TRAVEL_IN_MM": "NUMBER - Total physical linear distance processed in millimeters",
+        "NET_O2_CONSUMPTION_METER1": "NUMBER - Oxygen utility volume level drawn during runs",
+        "SHIFT_NAME": "VARCHAR - The specific active working group (A, B, or C)"
+      }
+    }
+  },
+  "saved_questions": [
+    {
+      "prompt_pattern": "total anomalies",
+      "cached_sql": "SELECT COUNT(SPAN) as total_anomalies FROM V_DEVIATION"
+    },
+    {
+      "prompt_pattern": "gas cutting distance",
+      "cached_sql": "SELECT MACHINE_NAME, SUM(NET_TRAVEL_IN_MM) FROM V_SUMMARIZE_GASCUTTING_MACHINE GROUP BY MACHINE_NAME"
+    }
+  ]
+}
