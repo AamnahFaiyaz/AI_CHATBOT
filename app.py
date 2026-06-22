@@ -17,12 +17,12 @@ You must generate highly accurate, executable Snowflake SQL statements based str
 
 Table Registries and Columns:
 
-1. MACHINE_TYPE
+1. V_MACHINE_TYPE
    - mtid (Numeric, Primary Key) -> Look up for machine categories
    - type (Text) -> Descriptive classification name of the machine type (e.g., GMAW, CLAD, GASCUTTING)
    - created_at, updated_at (Timestamp)
 
-2. MACHINES
+2. V_MACHINES
    - mid (Numeric, Primary Key) -> Unique machine asset identifier
    - name (Text) -> Physical name assigned to the industrial machine asset (e.g., Rectifier1, GasCutting1)
    - hardware_id (Text) -> Unique hexadecimal mac/hardware address linking tracking units
@@ -31,13 +31,13 @@ Table Registries and Columns:
    - notify, deleted (Boolean flags)
    - created_at, updated_at (Timestamp)
 
-3. DEVIATION
+3. V_DEVIATION
    - hardware_id, oid, shid (Identifiers)
    - start_tm, end_tm (Timestamp tracking window boundaries)
    - span (Numeric value highlighting scale or magnitude of calibration variance)
    - type, parameter (Text tracking monitored environmental parameter classifications like current, voltage, pressure)
 
-4. MACHINE_DERIVED
+4. V_MACHINE_DERIVED
    - mdid, mid, shift_id, oid, datekey, timekey, orgid (Relational keys)
    - target_arc_time, active, idle, inrepair, breakdown (Numeric state runtimes in minutes)
    - target_deposit, deposit, actualcost (Production and cost metrics)
@@ -48,7 +48,7 @@ Table Registries and Columns:
    - System thresholds: temp_hs_threshold, temp_amb_threshold, high_weld_volt_threshold, low_weld_volt_threshold, high_weld_cur_threshold, low_weld_cur_threshold, etc.
    - Sensor summaries: hs_temp_count, amb_temp_count, all_temp_count, target_arc_time_actual
 
-5. PERIODIC_DATA_INTERVAL2
+5. V_PERIODIC_DATA_INTERVAL2
    - pdid, hardware_id, oid (Primary keys and logging trackers)
    - business_date (Date), tm (Timestamp element tracking streaming data)
    - shift_name, machine_type, machine_name, job_name, mstatus, dis, position (Text dimensions)
@@ -59,7 +59,7 @@ Table Registries and Columns:
    - Device Diagnostics: health_status_lpg_flow_meter, health_status_o2_flow_meter1, health_status_o2_flow_meter2
    - created_at (Timestamp)
 
-6. SUMMARIZE_GASCUTTING_MACHINE
+6. V_SUMMARIZE_GASCUTTING_MACHINE
    - business_date (Date tracking production execution)
    - shift_name (Roster label tracker)
    - machine_type, machine_name (Descriptive tags)
@@ -68,7 +68,7 @@ Table Registries and Columns:
    - net_travel_in_mm (Total linear movement track accumulated by cutting torch)
    - net_lpg_consumption, net_o2_consumption_meter1, net_o2_consumption_meter2 (Utility gas meter volumes)
 
-7. SUMMARIZE_CLAD_DETAILS_INFO
+7. V_SUMMARIZE_CLAD_DETAILS_INFO
    - business_date (Date mapping production cycle)
    - shift_name, oid, machine_type, machine_name (Relational tags)
    - ontime, offtime (Timestamps representing process runs)
@@ -76,13 +76,13 @@ Table Registries and Columns:
    - Electrical variables: on_cur, off_cur, avg_weld_cur, on_volt, off_volt, avg_weld_volt
    - Material mass tracking parameters: on_weight, off_weight, loss_weight
 
-8. SUMMARIZE_NONGASCUT_MACHINE
+8. V_SUMMARIZE_NONGASCUT_MACHINE
    - business_date, shift_name, machine_type, machine_name (Process contexts)
    - on_time, off_time (Operation interval boundaries)
    - time_span, mm_per_min (Runtimes and feed speed parameters)
    - total_lpg_cons, total_heating_o2, net_travel_in_mm (Aggregated utility metrics)
 
-9. USER
+9. V_USER
    - uid (Numeric operational employee roster reference key)
    - name, email, phno, username, password (Identity profile attributes)
    - roleid, hid, orgid, opid, operator_rfid, certificate_id, identification_no (Authorization variables)
