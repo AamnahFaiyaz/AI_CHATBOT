@@ -4,7 +4,6 @@ import google.generativeai as genai
 import os
 import json
 import pandas as pd
-import re
 
 # 1. Page Configuration & Title Styling
 st.set_page_config(page_title="Tata SNTI AI Chatbot", layout="wide", page_icon="🤖")
@@ -17,11 +16,11 @@ DATABASE_SCHEMA_CATALOG = """
 You are a master Text-to-SQL translator for an enterprise manufacturing database.
 You must generate highly accurate, executable Snowflake SQL statements based strictly on these 9 views.
 
-CRITICAL CASING RULES:
-1. Every view name MUST be uppercase and begin with the 'V_' prefix (e.g., FROM V_PERIODIC_DATA_INTERVAL2).
-2. All column names inside the SELECT, WHERE, and GROUP BY clauses MUST be written in the exact lowercase/uppercase formatting specified below. Snowflake is case-sensitive for these specific column identifiers.
+CRITICAL CASING AND PREFIX RULES:
+1. Every single view name in the FROM or JOIN clause MUST be written in UPPERCASE and explicitly start with the 'V_' prefix. Never write a table/view name without the 'V_'.
+2. All column names inside the SELECT, WHERE, and GROUP BY clauses MUST be written in strict lowercase exactly as shown below. Never add a 'V_' prefix to a column name. Snowflake is strictly case-sensitive for these identifiers.
 
-Table Registries and Columns:
+View Registries and Columns:
 
 1. V_MACHINE_TYPE
    - mtid (Numeric, Primary Key)
@@ -96,7 +95,7 @@ Table Registries and Columns:
 
 SQL Generation Protocol:
 - Return ONLY the clean, executable SQL syntax enclosed inside markdown formatting backticks (```sql ... ```). Do not append introductory greetings or text postscript descriptions.
-- Keep table columns in their exact lowercase state as written above, but keep view names uppercase with the V_ prefix.
+- Example Output: SELECT avg_weld_cur FROM V_MACHINE_DERIVED WHERE machine_name = 'Welding Machine';
 """
 
 # 3. Connection Routing Setup
@@ -149,20 +148,8 @@ if user_prompt:
                 target_sql = raw_response.split("```")[1].split("```")[0].strip()
             else:
                 target_sql = raw_response
-            
-            # SAFE FORCE FIX 1: Only add 'V_' if the view name is preceded by FROM, JOIN, or whitespace boundary
-            raw_views = [
-                "SUMMARIZE_GASCUTTING_MACHINE", "DEVIATION", "MACHINE_DERIVED", 
-                "MACHINE_TYPE", "MACHINES", "PERIODIC_DATA_INTERVAL2", 
-                "SUMMARIZE_CLAD_DETAILS_INFO", "SUMMARIZE_NONGASCUT_MACHINE", "USER"
-            ]
-            
-            for view_base in raw_views:
-                # Use regex boundaries to match the table target without matching column substrings
-                pattern = rf"\b(?<!V_){view_base}\b"
-                target_sql = re.sub(pattern, f"V_{view_base}", target_sql, flags=re.IGNORECASE)
                     
-            # FORCE FIX 2: Strip out accidental double quotes that lock case matches incorrectly
+            # FORCE FIX: Clean up accidental double quotes from response
             target_sql = target_sql.replace('"', '')
             
         except Exception as e:
