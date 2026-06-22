@@ -3,6 +3,7 @@ import snowflake.connector
 import google.generativeai as genai
 import os
 import json
+import pandas as pd
 
 # 1. Page Configuration & Title Styling
 st.set_page_config(page_title="Industrial Data Workspace", layout="wide", page_icon="🏭")
@@ -186,26 +187,27 @@ if user_prompt:
             conn.close()
             
             if data_results:
+                # Reconstruct tuples into a proper DataFrame to comply with modern Streamlit layout rules
+                df_display = pd.DataFrame(data_results, columns=columns)
+                
                 col1, col2 = st.columns([2, 1])
                 
                 with col1:
                     st.markdown("#### 📊 Real-time Log Stream")
-                    st.dataframe(data_results, columns=columns, use_container_width=True)
+                    st.dataframe(df_display, use_container_width=True)
                 
                 with col2:
                     st.markdown("#### ℹ️ Metrics Analytics Summary")
-                    st.metric(label="Total Data Rows Fetched", value=len(data_results))
+                    st.metric(label="Total Data Rows Fetched", value=len(df_display))
                     
                     # Automated Chart Evaluation Rendering Engine
-                    if len(columns) >= 2 and len(data_results) > 1:
-                        import pandas as pd
-                        df = pd.DataFrame(data_results, columns=columns)
-                        numeric_col = next((c for c in columns if df[c].dtype in ['float64', 'int64']), None)
-                        text_col = next((c for c in columns if df[c].dtype == 'object'), columns[0])
+                    if len(columns) >= 2 and len(df_display) > 1:
+                        numeric_col = next((c for c in columns if df_display[c].dtype in ['float64', 'int64']), None)
+                        text_col = next((c for c in columns if df_display[c].dtype == 'object'), columns[0])
                         
                         if numeric_col:
                             st.markdown(f"**Visual Distribution Matrix ({numeric_col}):**")
-                            st.bar_chart(data=df, x=text_col, y=numeric_col)
+                            st.bar_chart(data=df_display, x=text_col, y=numeric_col)
             else:
                 st.info("Query compiled and delivered successfully, but Snowflake returned an empty dataset state.")
                 
