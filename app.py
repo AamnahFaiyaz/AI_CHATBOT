@@ -93,9 +93,13 @@ View Registries and Columns:
    - active_status, deleted (Boolean)
    - current_session_token, csrf_token, token_created_at, created_at, updated_at (Temporal)
 
+CRITICAL USER INTENT ROUTING RULES:
+- If a regular user asks about general "Welding Machine" variables (like current, usage, voltage) without naming a specific table, they are looking for telemetry data. You MUST query V_PERIODIC_DATA_INTERVAL2.
+- Do NOT pull from V_SUMMARIZE_CLAD_DETAILS_INFO for general welding machine questions unless the user explicitly types the words 'cladding' or 'clad'.
+- Human users do not know your internal row values or exact casing. Always implement safe case-insensitive matching in your WHERE clauses using LOWER() and LIKE (e.g., WHERE LOWER(machine_type) LIKE '%welding%' OR LOWER(machine_name) LIKE '%welding%').
+
 SQL Generation Protocol:
 - Return ONLY the clean, executable SQL syntax enclosed inside markdown formatting backticks (```sql ... ```). Do not append introductory greetings or text postscript descriptions.
-- Example Output: SELECT avg_weld_cur FROM V_MACHINE_DERIVED WHERE machine_name = 'Welding Machine';
 """
 
 # 3. Connection Routing Setup
