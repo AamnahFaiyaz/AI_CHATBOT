@@ -4,10 +4,12 @@ import google.generativeai as genai
 import os
 import json
 import pandas as pd
+import re
 
 # 1. Page Configuration & Title Styling
 st.set_page_config(page_title="Tata SNTI AI Chatbot", layout="wide", page_icon="🤖")
 st.title("🤖 Tata SNTI AI Chatbot")
+st.markdown("### Natural Language Interface for IoT Manufacturing Analytics")
 st.markdown("---")
 
 # 2. Comprehensive Database Schema Catalog (The absolute system context map for Gemini)
@@ -77,7 +79,7 @@ Table Registries and Columns:
    - ontime, offtime (Timestamp)
    - time_span (Text)
    - Electrical variables: on_cur, off_cur, avg_weld_cur, on_volt, off_volt, avg_weld_volt
-   - Mass measurement variables: on_weight, off_weight, loss_weight
+   - Material mass tracking parameters: on_weight, off_weight, loss_weight
 
 8. V_SUMMARIZE_NONGASCUT_MACHINE
    - business_date, shift_name, machine_type, machine_name (Text)
@@ -112,7 +114,7 @@ def get_snowflake_connection():
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 # 4. User Interaction Interface Widget
-user_prompt = st.text_input("Enter factory question or operational analytics prompt:", placeholder="e.g., Show Machine Names")
+user_prompt = st.text_input("Enter factory question or operational analytics prompt:", placeholder="e.g., What is average current usage of Welding Machine?")
 
 if user_prompt:
     target_sql = None
@@ -148,16 +150,17 @@ if user_prompt:
             else:
                 target_sql = raw_response
             
-            # FORCE FIX 1: Ensure view names always have uppercase V_ prefix
+            # SAFE FORCE FIX 1: Only add 'V_' if the view name is preceded by FROM, JOIN, or whitespace boundary
             raw_views = [
                 "SUMMARIZE_GASCUTTING_MACHINE", "DEVIATION", "MACHINE_DERIVED", 
                 "MACHINE_TYPE", "MACHINES", "PERIODIC_DATA_INTERVAL2", 
                 "SUMMARIZE_CLAD_DETAILS_INFO", "SUMMARIZE_NONGASCUT_MACHINE", "USER"
             ]
+            
             for view_base in raw_views:
-                # Catch lowercase or uppercase accidental omissions and standardize to uppercase V_VIEW
-                if view_base.lower() in target_sql.lower() and f"V_{view_base}" not in target_sql:
-                    target_sql = target_sql.replace(view_base.lower(), f"V_{view_base}").replace(view_base.upper(), f"V_{view_base}")
+                # Use regex boundaries to match the table target without matching column substrings
+                pattern = rf"\b(?<!V_){view_base}\b"
+                target_sql = re.sub(pattern, f"V_{view_base}", target_sql, flags=re.IGNORECASE)
                     
             # FORCE FIX 2: Strip out accidental double quotes that lock case matches incorrectly
             target_sql = target_sql.replace('"', '')
