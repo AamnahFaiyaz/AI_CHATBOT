@@ -10,7 +10,7 @@ st.title("🏭 Multi-Table Enterprise Chatbot Workspace")
 st.markdown("### Querying live factory assets, machine states, telemetry streams, and operational metrics across all 9 tables.")
 st.markdown("---")
 
-# 2. Verified Complete Database Schema Catalog (Passed directly to Gemini System Prompt)
+# 2. Comprehensive Database Schema Catalog (The absolute system context map for Gemini)
 DATABASE_SCHEMA_CATALOG = """
 You are a master Text-to-SQL translator for an enterprise manufacturing database.
 You must generate highly accurate, executable Snowflake SQL statements based strictly on these 9 UPPERCASE tables. Do not add any 'V_' prefixes.
@@ -91,7 +91,7 @@ Table Registries and Columns:
 
 SQL Generation Protocol:
 - Return ONLY the clean, executable SQL syntax enclosed inside markdown formatting backticks (```sql ... ```). Do not append introductory greetings or text postscript descriptions.
-- All table names in the FROM clause must be written in ALL CAPS exactly as shown above (e.g., SELECT * FROM SUMMARIZE_GASCUTTING_MACHINE).
+- All table names and column names must be written in strict UPPERCASE exactly as shown above (e.g., SELECT * FROM SUMMARIZE_GASCUTTING_MACHINE).
 """
 
 # 3. Connection Routing Setup
@@ -109,7 +109,7 @@ def get_snowflake_connection():
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 # 4. User Interaction Interface Widget
-user_prompt = st.text_input("Enter factory question or operational analytics prompt:", placeholder="e.g., Show average hs_temp from periodic logs or list all user names")
+user_prompt = st.text_input("Enter factory question or operational analytics prompt:", placeholder="e.g., Show all unique machine names")
 
 if user_prompt:
     target_sql = None
@@ -130,9 +130,12 @@ if user_prompt:
     # 6. Dynamic Generative Translation Path
     if not target_sql:
         try:
+            # Explicitly command uppercase column generation to the system context layer
+            UPPERCASE_STRICT_PROMPT = DATABASE_SCHEMA_CATALOG + "\nCRITICAL: ALL column names and table names must be written in strict UPPERCASE. Do not use lowercase characters for column selections."
+            
             model = genai.GenerativeModel(
                 model_name="gemini-2.5-flash",
-                system_instruction=DATABASE_SCHEMA_CATALOG
+                system_instruction=UPPERCASE_STRICT_PROMPT
             )
             response = model.generate_content(user_prompt)
             raw_response = response.text.strip()
@@ -144,6 +147,21 @@ if user_prompt:
                 target_sql = raw_response.split("```")[1].split("```")[0].strip()
             else:
                 target_sql = raw_response
+                
+            # FORCE FIX 1: Strip accidental V_ prefixes from any table names
+            prefixes_to_strip = [
+                "V_SUMMARIZE_GASCUTTING_MACHINE", "V_DEVIATION", "V_MACHINE_DERIVED", 
+                "V_MACHINE_TYPE", "V_MACHINES", "V_PERIODIC_DATA_INTERVAL2", 
+                "V_SUMMARIZE_CLAD_DETAILS_INFO", "V_SUMMARIZE_NONGASCUT_MACHINE", "V_USER"
+            ]
+            for bad_name in prefixes_to_strip:
+                if bad_name in target_sql:
+                    clean_name = bad_name.replace("V_", "")
+                    target_sql = target_sql.replace(bad_name, clean_name)
+                    
+            # FORCE FIX 2: Force the entire executable query string to UPPERCASE to prevent lowercase column identifier issues
+            target_sql = target_sql.upper()
+            
         except Exception as e:
             st.error(f"GenAI Translation Engine Error: {e}")
 
