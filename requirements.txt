@@ -1,5 +1,5 @@
 streamlit
 snowflake-connector-python
 pandas
-google-genai
+google-generativeai
 python-dotenv
