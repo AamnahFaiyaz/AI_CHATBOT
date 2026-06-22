@@ -1,191 +1,193 @@
 import streamlit as st
 import snowflake.connector
-import pandas as pd
-import json
+import google.generativeai as genai
 import os
-from google import genai
-from google.genai import types
-from dotenv import load_dotenv
+import json
 
-# ==========================================
-# 1. INITIALIZATION & SECURITY ENVIRONMENT
-# ==========================================
-# Always load variables out of the local .env file first
-load_dotenv()
-
-# Initialize the Gemini Enterprise Client
-client = genai.Client()
-
-# Set up clean browser tab metadata layout
-st.set_page_config(
-    page_title="TDA Configuration Chatbot",
-    page_icon="📦",
-    layout="wide"
-)
-
-# ==========================================
-# 2. CORE UTILITY FUNCTIONS
-# ==========================================
-def query_snowflake(sql_query):
-    """Executes database lookups targeting your Snowflake warehouse instances securely."""
-    try:
-        conn = snowflake.connector.connect(
-            user=os.getenv("SNOWFLAKE_USER"),
-            password=os.getenv("SNOWFLAKE_PASSWORD"),
-            account=os.getenv("SNOWFLAKE_ACCOUNT"),
-            warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
-            database=os.getenv("SNOWFLAKE_DATABASE"),
-            schema=os.getenv("SNOWFLAKE_SCHEMA")
-        )
-        
-        # Read data directly into a clean Pandas DataFrame workspace
-        df = pd.read_sql(sql_query, conn)
-        conn.close()
-        
-        return {"success": True, "data": df}
-        
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-def load_manifest():
-    """Loads configuration metadata structures profile schemas cleanly."""
-    try:
-        with open("manifest.json", "r") as f:
-            return json.load(f)
-    except Exception as e:
-        st.error(f"Failed to read manifest.json: {str(e)}")
-        return None
-
-# ==========================================
-# 3. STREAMLIT FRONTEND DASHBOARD LAYOUT
-# ==========================================
-st.title("📦 TDA Configuration-Driven Chatbot Workspace")
-st.markdown("Parsing live industrial database logs utilizing structural JSON manifest metadata profiles.")
+# 1. Page Configuration & Title Styling
+st.set_page_config(page_title="Industrial Data Workspace", layout="wide", page_icon="🏭")
+st.title("🏭 Multi-Table Enterprise Chatbot Workspace")
+st.markdown("### Querying live factory assets, machine states, telemetry streams, and operational metrics across all 9 tables.")
 st.markdown("---")
 
-# Load manifest data structures for caching or engine context injection
-manifest = load_manifest()
+# 2. Verified Complete Database Schema Catalog (Passed directly to Gemini System Prompt)
+DATABASE_SCHEMA_CATALOG = """
+You are a master Text-to-SQL translator for an enterprise manufacturing database.
+You must generate highly accurate, executable Snowflake SQL statements based strictly on the following 9 verified tables/views.
 
-# Core User Text Interaction Box
-user_prompt = st.text_input("Enter search prompt or dynamic question:", placeholder="e.g., Show total anomalies")
+CRITICAL NAMING NOTE: Depending on database configuration, tables/views in Snowflake may be capitalized and prefixed with 'V_' (e.g., V_DEVIATION, V_SUMMARIZE_GASCUTTING_MACHINE, V_MACHINES, V_USER, V_PERIODIC_DATA_INTERVAL2, V_MACHINE_DERIVED, V_MACHINE_TYPE, V_SUMMARIZE_CLAD_DETAILS_INFO, V_SUMMARIZE_NONGASCUT_MACHINE). Generate SQL using the correct names requested by context.
+
+Table Registries and Columns:
+
+1. machine_type (or V_MACHINE_TYPE)
+   - mtid (Numeric, Primary Key) -> Look up for machine categories
+   - type (Text) -> Descriptive classification name of the machine type (e.g., GMAW, CLAD, GASCUTTING)
+   - created_at, updated_at (Timestamp)
+
+2. machines (or V_MACHINES)
+   - mid (Numeric, Primary Key) -> Unique machine asset identifier
+   - name (Text) -> Physical name assigned to the industrial machine asset (e.g., Rectifier1, GasCutting1)
+   - hardware_id (Text) -> Unique hexadecimal mac/hardware address linking tracking units
+   - des, msid, mtid, hid, orgid, mcsid, mcid (Relational link identifiers)
+   - rpm_multiplication_factor (Numeric)
+   - notify, deleted (Boolean flags)
+   - created_at, updated_at (Timestamp)
+
+3. deviation (or V_DEVIATION)
+   - hardware_id, oid, shid (Identifiers)
+   - start_tm, end_tm (Timestamp tracking window boundaries)
+   - span (Numeric value highlighting scale or magnitude of calibration variance)
+   - type, parameter (Text tracking monitored environmental parameter classifications like current, voltage, pressure)
+
+4. machine_derived (or V_MACHINE_DERIVED)
+   - mdid, mid, shift_id, oid, datekey, timekey, orgid (Relational keys)
+   - target_arc_time, active, idle, inrepair, breakdown (Numeric state runtimes in minutes)
+   - target_deposit, deposit, actualcost (Production and cost metrics)
+   - partsneedcheckup (Maintenance indicators)
+   - ts, period_start, period_end, business_date (Temporal logging fields)
+   - hour_of_shift, shift_name (Roster contexts)
+   - Operational parameters: avg_weld_volt, avg_weld_cur, avg_gas_consumption, avg_motor_volt, avg_motor_cur
+   - System thresholds: temp_hs_threshold, temp_amb_threshold, high_weld_volt_threshold, low_weld_volt_threshold, high_weld_cur_threshold, low_weld_cur_threshold, etc.
+   - Sensor summaries: hs_temp_count, amb_temp_count, all_temp_count, target_arc_time_actual
+
+5. periodic_data_interval2 (or V_PERIODIC_DATA_INTERVAL2)
+   - pdid, hardware_id, oid (Primary keys and logging trackers)
+   - business_date (Date), tm (Timestamp element tracking streaming data)
+   - shift_name, machine_type, machine_name, job_name, mstatus, dis, position (Text dimensions)
+   - network (Numeric connection parameter)
+   - Live streaming metrics: weld_cur, weld_volt, weld_gas, motor_cur, motor_volt, hs_temp, amb_temp, rpm
+   - Metric flows: travel_in_mm, lpg_flow, o2_flow_meter1, o2_flow_meter2, thickness, cut_mm_mtr, weight
+   - Accumulated volumes: total_lpg_consumption, total_o2_consumption_meter1, total_o2_consumption_meter2
+   - Device Diagnostics: health_status_lpg_flow_meter, health_status_o2_flow_meter1, health_status_o2_flow_meter2
+   - created_at (Timestamp)
+
+6. summarize_gascutting_machine (or V_SUMMARIZE_GASCUTTING_MACHINE)
+   - business_date (Date tracking production execution)
+   - shift_name (Roster label tracker)
+   - machine_type, machine_name (Descriptive tags)
+   - on_time, off_time (Timestamp intervals tracking asset operations)
+   - time_span, mm_per_min, thickness, cut_mm_mtr (Dimensions and speed calculations)
+   - net_travel_in_mm (Total linear movement track accumulated by cutting torch)
+   - net_lpg_consumption, net_o2_consumption_meter1, net_o2_consumption_meter2 (Utility gas meter volumes)
+
+7. summarize_clad_details_info (or V_SUMMARIZE_CLAD_DETAILS_INFO)
+   - business_date (Date mapping production cycle)
+   - shift_name, oid, machine_type, machine_name (Relational tags)
+   - ontime, offtime (Timestamps representing process runs)
+   - time_span (Interval string logging active duration)
+   - Electrical variables: on_cur, off_cur, avg_weld_cur, on_volt, off_volt, avg_weld_volt
+   - Mass measurement variables: on_weight, off_weight, loss_weight
+
+8. summarize_nongascut_machine (or V_SUMMARIZE_NONGASCUT_MACHINE)
+   - business_date, shift_name, machine_type, machine_name (Process contexts)
+   - on_time, off_time (Operation interval boundaries)
+   - time_span, mm_per_min (Runtimes and feed speed parameters)
+   - total_lpg_cons, total_heating_o2, net_travel_in_mm (Aggregated utility metrics)
+
+9. user (or V_USER)
+   - uid (Numeric operational employee roster reference key)
+   - name, email, phno, username, password (Identity profile attributes)
+   - roleid, hid, orgid, opid, operator_rfid, certificate_id, identification_no (Authorization variables)
+   - active_status, deleted (System activity boolean flags)
+   - current_session_token, csrf_token, token_created_at, created_at, updated_at (Session temporal metrics)
+
+SQL Generation Protocol:
+- Return ONLY the clean, executable SQL syntax enclosed inside markdown formatting backticks (```sql ... ```). Do not append introductory greetings or text postscript descriptions.
+- Check user input attributes to cross-reference the correct target views precisely.
+"""
+
+# 3. Connection Routing Setup
+def get_snowflake_connection():
+    return snowflake.connector.connect(
+        user=st.secrets["SNOWFLAKE_USER"],
+        password=st.secrets["SNOWFLAKE_PASSWORD"],
+        account=st.secrets["SNOWFLAKE_ACCOUNT"],
+        warehouse=st.secrets["SNOWFLAKE_WAREHOUSE"],
+        database=st.secrets["SNOWFLAKE_DATABASE"],
+        schema=st.secrets["SNOWFLAKE_SCHEMA"]
+    )
+
+# Configure Gemini Context
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+
+# 4. User Interaction Interface Widget
+user_prompt = st.text_input("Enter factory question or operational analytics prompt:", placeholder="e.g., Show average hs_temp from periodic logs or list all user names")
 
 if user_prompt:
     target_sql = None
-    is_cached = False
     
-    # Check if the query is a pre-saved question inside the manifest cache layer
-    if manifest and "saved_questions" in manifest:
-        for q in manifest["saved_questions"]:
-            if q["prompt_pattern"].lower() in user_prompt.lower():
-                target_sql = q["cached_sql"]
-                is_cached = True
-                st.info("🎯 Manifest Match: Executing Pre-Saved Question Template")
-                break
-                
-    # If it's a dynamic exploration request, leverage the Gemini Engine
-    if not target_sql and manifest:
-        st.markdown("🧠 *Parsing dynamic entry via Gemini Engine utilizing JSON definitions*")
-        
-        system_context = f"""
-        You are an expert SQL generator for a Snowflake data warehouse platform.
-        Your system schema is strictly governed by this structural JSON configuration profile catalog:
-        {json.dumps(manifest.get('schema_definitions', {}))}
-        
-        Given the user's natural language request, generate a clean, accurate SQL query statement.
-        Only output the raw SQL text code. Do not wrap it in markdown code blocks or backticks.
-        """
-        
-        try:
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=user_prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_context,
-                    temperature=0.0 # Force objective technical accuracy
-                )
-            )
-            target_sql = response.text.strip()
-        except Exception as e:
-            st.error(f"GenAI Translation Engine Error: {str(e)}")
+    # 5. Manifest Static Pass Caching Check
+    if os.path.exists("manifest.json"):
+        with open("manifest.json", "r") as f:
+            try:
+                manifest = json.load(f)
+                for q in manifest.get("saved_questions", []):
+                    if user_prompt.strip().lower() == q["prompt_pattern"].lower():
+                        target_sql = q["cached_sql"]
+                        st.success("🎯 Direct configuration cache hit! Query pulled immediately.")
+                        break
+            except Exception:
+                pass
 
-    # ==========================================
-    # 4. EXECUTION & VISUAL PRESENTATION LAYER
-    # ==========================================
+    # 6. Dynamic Generative Translation Path
+    if not target_sql:
+        try:
+            model = genai.GenerativeModel(
+                model_name="gemini-2.5-flash",
+                system_instruction=DATABASE_SCHEMA_CATALOG
+            )
+            response = model.generate_content(user_prompt)
+            raw_response = response.text.strip()
+            
+            # Formatting sanitation block extraction
+            if "```sql" in raw_response:
+                target_sql = raw_response.split("```sql")[1].split("```")[0].strip()
+            elif "```" in raw_response:
+                target_sql = raw_response.split("```")[1].split("```")[0].strip()
+            else:
+                target_sql = raw_response
+        except Exception as e:
+            st.error(f"GenAI Translation Engine Error: {e}")
+
+    # 7. Database Fetching and Rendering Workspace
     if target_sql:
-        st.markdown("### 📋 Evaluated Code Statement")
+        st.markdown("#### 🛠️ Generated Target Query")
         st.code(target_sql, language="sql")
         
-        with st.spinner("Extracting logs directly from target data views..."):
-            db_payload = query_snowflake(target_sql)
+        try:
+            conn = get_snowflake_connection()
+            cursor = conn.cursor()
+            cursor.execute(target_sql)
             
-            if db_payload["success"]:
-                df = db_payload["data"]
-                st.success("Log records parsed successfully!")
-                
-                # Create a dynamic row layout for advanced dashboard insights
+            columns = [col[0] for col in cursor.description]
+            data_results = cursor.fetchall()
+            
+            cursor.close()
+            conn.close()
+            
+            if data_results:
                 col1, col2 = st.columns([2, 1])
                 
                 with col1:
-                    st.markdown("#### 🔍 Tabular Logs Workspace")
-                    st.dataframe(df, use_container_width=True)
-                    
+                    st.markdown("#### 📊 Real-time Log Stream")
+                    st.dataframe(data_results, columns=columns, use_container_width=True)
+                
                 with col2:
-                    st.markdown("#### 📊 Operations KPI Visual")
+                    st.markdown("#### ℹ️ Metrics Analytics Summary")
+                    st.metric(label="Total Data Rows Fetched", value=len(data_results))
                     
-                    # 1. Multi-row data logic (Charts)
-                    if len(df) > 1 and len(df.columns) >= 2:
-                        try:
-                            chart_df = df.copy()
-                            x_axis_col = chart_df.columns[0]
-                            chart_df = chart_df.set_index(x_axis_col)
-                            st.bar_chart(chart_df)
-                        except Exception as chart_err:
-                            st.caption("Numerical tracking trends are not applicable for this data structure.")
-                    
-                    # 2. Single value logic (KPI Cards)
-                    # 2. Single value logic (KPI Cards)
-                    elif len(df) == 1 and len(df.columns) == 1:
-                        metric_val = df.iloc[0, 0]
-                        metric_lbl = df.columns[0].replace("_", " ").title()
+                    # Automated Chart Evaluation Rendering Engine
+                    if len(columns) >= 2 and len(data_results) > 1:
+                        import pandas as pd
+                        df = pd.DataFrame(data_results, columns=columns)
+                        numeric_col = next((c for c in columns if df[c].dtype in ['float64', 'int64']), None)
+                        text_col = next((c for c in columns if df[c].dtype == 'object'), columns[0])
                         
-                        # Fix: Only apply comma formatting if the value is an integer or float
-                        if isinstance(metric_val, (int, float)):
-                            formatted_val = f"{metric_val:,}"
-                        else:
-                            formatted_val = str(metric_val)
-                            
-                        st.metric(label=metric_lbl, value=formatted_val)
-                    
-                    # 3. Text/Empty Fallback logic
-                    else:
-                        st.info("Log index payload structure is best evaluated via tabular view layout.")
-                
-                # --- EXECUTIVE INTERPRETATION BANNER ---
-                st.markdown("---")
-                st.markdown("### 💡 Executive Log Interpretation")
-                
-                with st.spinner("Analyzing data payload context..."):
-                    # Convert the current dataframe snapshot into a text format for the LLM
-                    data_string = df.to_string(index=False)
-                    
-                    explanation_context = f"""
-                    You are a Lead Operations Analyst at an industrial manufacturing plant.
-                    Review the following dataset retrieved from the system logs regarding the user's query '{user_prompt}':
-                    
-                    {data_string}
-                    
-                    Write a concise 2-3 sentence executive breakdown summarizing this finding. 
-                    Explain what this metric implies for factory health, wear-and-tear, or shift efficiency based on standard IoT parameters.
-                    """
-                    
-                    try:
-                        analysis_response = client.models.generate_content(
-                            model='gemini-2.5-flash',
-                            contents=explanation_context
-                        )
-                        # Display the explanation in a professional blockquote alert layer
-                        st.info(analysis_response.text)
-                    except Exception as explanation_err:
-                        st.caption("Contextual log summary generation offline.")
+                        if numeric_col:
+                            st.markdown(f"**Visual Distribution Matrix ({numeric_col}):**")
+                            st.bar_chart(data=df, x=text_col, y=numeric_col)
             else:
-                st.error(f"Execution Error Encountered: {db_payload['error']}")
+                st.info("Query compiled and delivered successfully, but Snowflake returned an empty dataset state.")
+                
+        except Exception as err:
+            st.error(f"Database Query Execution Failure: {err}")
