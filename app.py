@@ -112,7 +112,7 @@ def get_snowflake_connection():
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 # 4. User Interaction Interface Widget
-user_prompt = st.text_input("Enter factory question or operational analytics prompt:", placeholder="e.g., Show unique machine names and travel_in_mm from periodic logs")
+user_prompt = st.text_input("Enter factory question or operational analytics prompt:", placeholder="e.g., Show Machine Names")
 
 if user_prompt:
     target_sql = None
