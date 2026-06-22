@@ -148,22 +148,22 @@ if user_prompt:
             else:
                 target_sql = raw_response
                 
-            # FORCE FIX 1: Strip accidental V_ prefixes from any table names
-            prefixes_to_strip = [
-                "V_SUMMARIZE_GASCUTTING_MACHINE", "V_DEVIATION", "V_MACHINE_DERIVED", 
-                "V_MACHINE_TYPE", "V_MACHINES", "V_PERIODIC_DATA_INTERVAL2", 
-                "V_SUMMARIZE_CLAD_DETAILS_INFO", "V_SUMMARIZE_NONGASCUT_MACHINE", "V_USER"
-            ]
-            for bad_name in prefixes_to_strip:
-                if bad_name in target_sql:
-                    clean_name = bad_name.replace("V_", "")
-                    target_sql = target_sql.replace(bad_name, clean_name)
-                    
-            # FORCE FIX 2: Force the entire executable query string to UPPERCASE to prevent lowercase column identifier issues
+            # FORCE FIX 1: Ensure uppercase structural integration
             target_sql = target_sql.upper()
             
-        except Exception as e:
-            st.error(f"GenAI Translation Engine Error: {e}")
+            # FORCE FIX 2: Safeguard step to make sure 'V_' is never missed out
+            raw_views = [
+                "SUMMARIZE_GASCUTTING_MACHINE", "DEVIATION", "MACHINE_DERIVED", 
+                "MACHINE_TYPE", "MACHINES", "PERIODIC_DATA_INTERVAL2", 
+                "SUMMARIZE_CLAD_DETAILS_INFO", "SUMMARIZE_NONGASCUT_MACHINE", "USER"
+            ]
+            for view_base in raw_views:
+                if view_base in target_sql and f"V_{view_base}" not in target_sql:
+                    target_sql = target_sql.replace(view_base, f"V_{view_base}")
+
+            # 🚨 THE CRITICAL FIX FOR MORNING PRESENTATION 🚨
+            # Strip out all double quotes so Snowflake reads the identifiers normally
+            target_sql = target_sql.replace('"', '')
 
     # 7. Database Fetching and Rendering Workspace
     if target_sql:
