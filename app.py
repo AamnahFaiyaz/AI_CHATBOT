@@ -6,9 +6,8 @@ import json
 import pandas as pd
 
 # 1. Page Configuration & Title Styling
-st.set_page_config(page_title="Industrial Data Workspace", layout="wide", page_icon="🏭")
-st.title("🏭 Multi-Table Enterprise Chatbot Workspace")
-st.markdown("### Querying live factory assets, machine states, telemetry streams, and operational metrics across all 9 database views.")
+st.set_page_config(page_title="Tata SNTI AI Chatbot", layout="wide", page_icon="🤖")
+st.title("🤖 Tata SNTI AI Chatbot")
 st.markdown("---")
 
 # 2. Comprehensive Database Schema Catalog (The absolute system context map for Gemini)
