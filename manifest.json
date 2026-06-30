@@ -48,22 +48,22 @@
       "description": "Calculated efficiency aggregations, temporal status segments, and sensor limits for industrial machinery.",
       "columns": {
         "ACTIVE": "NUMBER(38,0) - Total accumulated operational processing duration time segment",
-        "AVG_GAS_CONSUMPTION": "NUMBER(38,0) - Mean operational resource volumetric utility stream index speed for gas",
-        "AVG_MOTOR_CURRENT": "NUMBER(38,0) - Mean mechanical motor draw amperage tracking level",
-        "AVG_MOTOR_VOLTAGE": "NUMBER(38,0) - Mathematical average secondary electrical potential across driving motors",
-        "AVG_WELD_CURRENT": "NUMBER(38,0) - Mathematical average electric current recorded across welding cycles",
-        "AVG_WELD_VOLTAGE": "NUMBER(38,0) - Mathematical average voltage recorded across active welding cycles",
-        "BREAKDOWN": "NUMBER(38,0) - Machine failure unserviceable downtime duration record logs",
-        "BUSINESS_DATE": "TIMESTAMP_NTZ(9) - Calendar working operational accounting day ledger tracking date",
         "IDLE": "NUMBER(38,0) - Non-operational power-on standby timeframe block state duration",
         "INREPAIR": "NUMBER(38,0) - Maintenance intervention time log segment duration",
+        "BREAKDOWN": "NUMBER(38,0) - Machine failure unserviceable downtime duration record logs",
+        "AVG_WELD_CUR": "NUMBER(38,0) - Mathematical average electric current recorded across welding cycles",
+        "AVG_WELD_VOLT": "NUMBER(38,0) - Mathematical average voltage recorded across active welding cycles",
+        "AVG_GAS_CONSUMPTION": "NUMBER(38,0) - Mean operational resource volumetric utility stream index speed for gas",
+        "AVG_MOTOR_CUR": "NUMBER(38,0) - Mean mechanical motor draw amperage tracking level",
+        "AVG_MOTOR_VOLT": "NUMBER(38,0) - Mathematical average secondary electrical potential across driving motors",
+        "TARGET_ARC_TIME_ACTUAL": "NUMBER(38,0) - Exact calculated absolute baseline real-world realization time metric for active arcs",
+        "BUSINESS_DATEKEY": "TIMESTAMP_NTZ(9) - Calendar working operational accounting day ledger tracking key context identifier",
+        "PERIOD_START": "VARCHAR(16777216) - Lower bounded interval parameter timeframe string",
+        "PERIOD_END": "VARCHAR(16777216) - Upper bounded interval parameter timeframe string",
         "MACHINE_NAME": "VARCHAR(16777216) - Human-readable name of the machine asset",
         "MACHINE_TYPE": "VARCHAR(16777216) - General machine classification grouping text",
-        "OID": "NUMBER(38,0) - Operational event block ledger link parameter",
-        "PERIOD_END": "VARCHAR(16777216) - Upper bounded interval parameter timeframe string",
-        "PERIOD_START": "VARCHAR(16777216) - Lower bounded interval parameter timeframe string",
         "SHIFT_NAME": "VARCHAR(16777216) - Descriptive shift identification code string (A, B, or C)",
-        "TARGET_ARC_TIME": "NUMBER(38,0) - Budgeted or ideal processing arc production threshold time"
+        "OID": "NUMBER(38,0) - Operational event block ledger link parameter"
       }
     },
     "V_PERIODIC_DATA_INTERVAL2": {
@@ -172,8 +172,8 @@
   },
   "saved_questions": [
     {
-      "prompt_pattern": "average welding current profiles",
-      "cached_sql": "SELECT machine_name, AVG(weld_cur) FROM V_PERIODIC_DATA_INTERVAL2 WHERE weld_cur > 0 GROUP BY machine_name;"
+      "prompt_pattern": "average welding current",
+      "cached_sql": "SELECT machine_name, ROUND(AVG(weld_cur), 2) AS AVG_WELD_CURRENT FROM V_PERIODIC_DATA_INTERVAL2 WHERE weld_cur > 0 GROUP BY machine_name ORDER BY AVG_WELD_CURRENT DESC"
     }
   ]
 }
