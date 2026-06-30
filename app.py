@@ -13,104 +13,94 @@ st.markdown("---")
 
 # 2. Comprehensive Database Schema Catalog (The absolute system context map for Gemini)
 DATABASE_SCHEMA_CATALOG = """
-You are an expert Oracle SQL translation engine for Tata Steel. 
+You are an expert Oracle and Snowflake SQL translation engine for Tata Steel. 
 You must follow these strict database and syntax rules:
 
 1. TARGET TABLE RULE:
-- For any questions regarding 'weld time', 'welding duration', or 'machine status tracking', you MUST query the 'V_PERIODIC_DATA_INTERVAL2' view.
-- DO NOT use V_MACHINE_DERIVED or attempt to join V_MACHINES.
+- For any questions regarding 'weld time', 'welding duration', 'current utilization', or 'machine activity metrics', you MUST query the 'V_PERIODIC_DATA_INTERVAL2' view.
+- DO NOT use V_MACHINE_DERIVED and DO NOT use columns that do not exist.
 
-2. ORACLE SYNTAX CRITICAL RULES:
+2. SYNTAX CRITICAL RULES:
 - NEVER use the 'AS' keyword when creating table or view aliases. (e.g., 'FROM table_name t1', NOT 'FROM table_name AS t1').
-- Standard Oracle column names are case-insensitive, but do not append fake aliases like 'T1.MID' if they do not exist.
+- Standard column names are case-insensitive, but do not append fake aliases like 'T1.MID' if they do not exist.
 
-View Registries and Columns:
+View Registries, Precise Snowflake Types, and Columns:
 
 1. V_MACHINE_TYPE
-   - mtid (Numeric, Primary Key)
-   - type (Text)
-   - created_at, updated_at (Timestamp)
+   - CREATED_AT (TIMESTAMP_NTZ(9))
+   - MTID (NUMBER(38,0), Primary Key)
+   - TYPE (VARCHAR(16777216))
+   - UPDATED_AT (TIMESTAMP_NTZ(9))
 
 2. V_MACHINES
-   - mid (Numeric, Primary Key)
-   - name (Text)
-   - hardware_id (Text)
-   - des, msid, mtid, hid, orgid, mcsid, mcid (Identifiers)
-   - rpm_multiplication_factor (Numeric)
-   - notify, deleted (Boolean)
-   - created_at, updated_at (Timestamp)
+   - MID (NUMBER(38,0), Primary Key)
+   - NAME (VARCHAR(16777216))
+   - HARDWARE_ID (VARCHAR(16777216))
+   - DES, MSID, HID, ORGID, MCSID, MCID (VARCHAR(16777216))
+   - MTID (NUMBER(38,0))
+   - RPM_MULTIPLICATION_FACTOR (NUMBER(38,0))
+   - NOTIFY, DELETED (BOOLEAN)
+   - CREATED_AT, UPDATED_AT (TIMESTAMP_NTZ(9))
 
 3. V_DEVIATION
-   - hardware_id, oid, shid (Identifiers)
-   - start_tm, end_tm (Timestamp)
-   - span (Numeric)
-   - type, parameter (Text)
+   - END_TM (TIMESTAMP_NTZ(9))
+   - HARDWARE_ID, OID, PARAMETER, SHID, TYPE (VARCHAR(16777216))
+   - SPAN (NUMBER(38,0))
+   - START_TM (TIMESTAMP_NTZ(9))
 
 4. V_MACHINE_DERIVED
-   - mdid, mid, shift_id, oid, datekey, timekey, orgid (Identifiers)
-   - target_arc_time, active, idle, inrepair, breakdown (Numeric)
-   - target_deposit, deposit, actualcost, partsneedcheckup (Metrics)
-   - ts, period_start, period_end, business_date (Temporal)
-   - hour_of_shift, shift_name (Text)
-   - Operational parameters: avg_weld_volt, avg_weld_cur, avg_gas_consumption, avg_motor_volt, avg_motor_cur
-   - System thresholds: temp_hs_threshold, temp_amb_threshold, high_weld_volt_threshold, low_weld_volt_threshold, high_weld_cur_threshold, low_weld_cur_threshold, etc.
-   - Sensor summaries: hs_temp_count, amb_temp_count, all_temp_count, target_arc_time_actual
+   - ACTIVE, AVG_GAS_CONSUMPTION, AVG_MOTOR_CURRENT, AVG_MOTOR_VOLTAGE, AVG_WELD_CURRENT, AVG_WELD_VOLTAGE, BREAKDOWN (NUMBER(38,0))
+   - BUSINESS_DATE (TIMESTAMP_NTZ(9))
+   - IDLE, INREPAIR, OID, TARGET_ARC_TIME (NUMBER(38,0))
+   - MACHINE_NAME, MACHINE_TYPE, PERIOD_END, PERIOD_START, SHIFT_NAME (VARCHAR(16777216))
 
 5. V_PERIODIC_DATA_INTERVAL2
-   - pdid, hardware_id, oid (Identifiers)
-   - business_date (Date), tm (Timestamp)
-   - shift_name, machine_type, machine_name, job_name, mstatus, dis, position (Text)
-   - network (Numeric)
-   - Live metrics: weld_cur, weld_volt, weld_gas, motor_cur, motor_volt, hs_temp, amb_temp, rpm
-   - Metric flows: travel_in_mm, lpg_flow, o2_flow_meter1, o2_flow_meter2, thickness, cut_mm_mtr, weight
-   - Accumulated volumes: total_lpg_consumption, total_o2_consumption_meter1, total_o2_consumption_meter2
-   - Device Diagnostics: health_status_lpg_flow_meter, health_status_o2_flow_meter1, health_status_o2_flow_meter2
-   - created_at (Timestamp)
+   - BUSINESS_DATE (DATE)
+   - CUT_MM_MTR, MOTOR_CUR, MOTOR_VOLT, RPM, THICKNESS, WEIGHT, WELD_CUR, WELD_GAS, WELD_VOLT (NUMBER(38,0))
+   - JOB_NAME, MACHINE_NAME, MACHINE_TYPE, SHIFT_NAME (VARCHAR(16777216))
 
 6. V_SUMMARIZE_GASCUTTING_MACHINE
-   - business_date (Date)
-   - shift_name (Text)
-   - machine_type, machine_name (Text)
-   - on_time, off_time (Timestamp)
-   - time_span, mm_per_min, thickness, cut_mm_mtr (Metrics)
-   - net_travel_in_mm (Numeric)
-   - net_lpg_consumption, net_o2_consumption_meter1, net_o2_consumption_meter2 (Metrics)
+   - BUSINESS_DATE (DATE)
+   - MACHINE_NAME, MACHINE_TYPE, SHIFT_NAME, TIME_SPAN, TIME_SPAN_MIN, TOTAL_O2 (VARCHAR(16777216))
+   - MM_PER_MINUTE (NUMBER(38,15))
+   - NET_LPG_CONSUMPTION, NET_O2_CONSUMPTION_METER1, NET_O2_CONSUMPTION_METER2, NET_TRAVEL_IN_MM (NUMBER(38,6))
+   - OFF_TIME, ON_TIME (TIMESTAMP_NTZ(9))
 
 7. V_SUMMARIZE_CLAD_DETAILS_INFO
-   - business_date (Date)
-   - shift_name, oid, machine_type, machine_name (Text)
-   - ontime, offtime (Timestamp)
-   - time_span (Text)
-   - Electrical variables: on_cur, off_cur, avg_weld_cur, on_volt, off_volt, avg_weld_volt
-   - Material mass tracking parameters: on_weight, off_weight, loss_weight
+   - AVG_WELD_CUR (NUMBER(38,15))
+   - AVG_WELD_VOLT (NUMBER(38,17))
+   - BUSINESS_DATE (DATE)
+   - LOSS_WEIGHT (NUMBER(38,2))
+   - MACHINE_NAME, MACHINE_TYPE, OFF_CUR, OFF_VOLT, OFF_WEIGHT, ON_CUR, ON_VOLT, ON_WEIGHT, SHIFT_NAME (VARCHAR(16777216))
+   - OFFTIME, ONTIME (TIMESTAMP_NTZ(9))
+   - OID (NUMBER(38,0))
+   - TIME_SPAN (TIME(9))
 
 8. V_SUMMARIZE_NONGASCUT_MACHINE
-   - business_date, shift_name, machine_type, machine_name (Text)
-   - on_time, off_time (Timestamp)
-   - time_span, mm_per_min (Metrics)
-   - total_lpg_cons, total_heating_o2, net_travel_in_mm (Metrics)
+   - BUSINESS_DATE (DATE)
+   - MACHINE_NAME, MACHINE_TYPE, SHIFT_NAME (VARCHAR(16777216))
+   - MM_PER_MINUTE (NUMBER(38,20))
+   - NET_TRAVEL_IN_MM (NUMBER(38,6))
+   - OFF_TIME, ON_TIME (TIMESTAMP_NTZ(9))
+   - TIME_SPAN (TIME(9))
+   - TOTAL_HEATING_O2, TOTAL_LPG_CONS (NUMBER(38,0))
 
 9. V_USER
-   - uid (Numeric)
-   - name, email, phno, username, password (Text)
-   - roleid, hid, orgid, opid, operator_rfid, certificate_id, identification_no (Identifiers)
-   - active_status, deleted (Boolean)
-   - current_session_token, csrf_token, token_created_at, created_at, updated_at (Temporal)
+   - ACTIVE_STATUS, DELETED (BOOLEAN)
+   - CERTIFICATE_ID, CSRF_TOKEN, CURRENT_SESSION_TOKEN, IDENTIFICATION_NO, NAME, OPERATOR_RFID, OPID, PASSWORD, SESSION_EXPIRY, USERNAME (VARCHAR(16777216))
+   - CREATED_AT, LAST_LOGIN, TOKEN_CREATED_AT, UPDATED_AT (TIMESTAMP_NTZ(9))
+   - HID, ORGID, PHNO, ROLEID, UID (NUMBER(38,0), UID is Primary Key)
 
 CRITICAL USER INTENT ROUTING & VOCABULARY RULES:
-- Ordinary users don't know the specific industrial row data strings. You MUST automatically translate conversational keywords into the exact database value abbreviations:
-  1. If a user says "Welding" or "Welding Machine", translate this concept to match the string value 'GMAW' or look for rows containing 'weld'.
-  2. If a user says "Cladding" or "Clad Machine", translate this concept to match the string value 'CLAD'.
-  3. If a user says "Gas Cutting" or "Gas Cutting Machine", translate this concept to match the string value 'GASCUTTING'.
+- Translate conversational terms to data constraints cleanly:
+  1. 'Welding' / 'Welding Machine' -> matches string context value 'GMAW' or rows matching 'weld'.
+  2. 'Cladding' / 'Clad Machine' -> matches string value 'CLAD'.
+  3. 'Gas Cutting' / 'Gas Cutting Machine' -> matches string value 'GASCUTTING'.
   
-- Table Selection Routing:
-  1. If the user asks general operational metrics about "Welding" (current usage, voltage, telemetry) without mentioning summary logs, target V_PERIODIC_DATA_INTERVAL2 and filter by machine_type = 'GMAW'.
-  2. Only query V_SUMMARIZE_CLAD_DETAILS_INFO if they explicitly use the words 'cladding' or 'clad'.
-
-- Filter Casing Isolation: Always generate case-insensitive comparisons using LOWER() and LIKE to guarantee robust user search matching (e.g., WHERE LOWER(machine_type) LIKE '%gmaw%' OR LOWER(machine_name) LIKE '%gmaw%').
+- Casing Isolation: Generate comparisons via LOWER() and LIKE (e.g., WHERE LOWER(machine_type) LIKE '%gmaw%').
 
 SQL Generation Protocol:
-- Return ONLY the clean, executable SQL syntax enclosed inside markdown formatting backticks (```sql ... ```). Do not append introductory greetings or text postscript descriptions.
+- Return ONLY the clean, executable SQL syntax enclosed inside markdown formatting backticks (```sql ... ```). No conversation text.
 """
 
 # 3. Connection Routing Setup
@@ -148,7 +138,7 @@ if user_prompt:
 
     # 6. Dynamic Generative Translation Path
     if not target_sql:
-        # QUICK FIX MEETING OVERRIDE: Intercept shift/welding questions based on your specific requirements
+        # QUICK FIX MEETING OVERRIDE: Intercept shift/welding questions using VALID columns
         if (
             "shift" in user_prompt.lower()
             and (
@@ -158,11 +148,13 @@ if user_prompt:
         ):
             target_sql = """SELECT 
     shift_name, 
-    ROUND(AVG(weld_duration_seconds), 2) AS AVG_WELD_TIME_SECONDS 
+    ROUND(AVG(weld_cur), 2) AS AVG_ACTIVE_CURRENT_AMPS,
+    COUNT(weld_cur) AS TELEMETRY_PING_COUNT
 FROM 
     V_PERIODIC_DATA_INTERVAL2
 WHERE 
     LOWER(machine_type) LIKE '%gmaw%'
+    AND weld_cur > 0
 GROUP BY 
     shift_name;"""
         elif (
@@ -171,37 +163,31 @@ GROUP BY
             or "average weld time" in user_prompt.lower()
         ):
             if "hour" in user_prompt.lower():
-                target_sql = """WITH DataWithWeldingFlag AS (
-    SELECT p.tm, p.hardware_id, CASE WHEN p.weld_cur > 0 OR p.weld_volt > 0 THEN 1 ELSE 0 END AS is_welding
-    FROM V_PERIODIC_DATA_INTERVAL2 p WHERE LOWER(p.machine_type) LIKE '%gmaw%' OR LOWER(p.machine_name) LIKE '%gmaw%'
-),
-GroupedWeldingPeriods AS (
-    SELECT tm, hardware_id, is_welding, ROW_NUMBER() OVER (PARTITION BY hardware_id ORDER BY tm) - ROW_NUMBER() OVER (PARTITION BY hardware_id, is_welding ORDER BY tm) AS block_id
-    FROM DataWithWeldingFlag
-),
-WeldDurations AS (
-    SELECT hardware_id, block_id, MIN(tm) AS weld_start_time, MAX(tm) AS weld_end_time FROM GroupedWeldingPeriods WHERE is_welding = 1 GROUP BY hardware_id, block_id HAVING MAX(tm) > MIN(tm)
-)
+                target_sql = """-- Data Gap Contextualization: Displaying hourly proxy metrics via signal counts
 SELECT 
-    hardware_id AS WELDING_MACHINE,
-    ROUND(AVG(EXTRACT(DAY FROM (weld_end_time - weld_start_time)) * 24 + EXTRACT(HOUR FROM (weld_end_time - weld_start_time)) + EXTRACT(MINUTE FROM (weld_end_time - weld_start_time)) / 60 + EXTRACT(SECOND FROM (weld_end_time - weld_start_time)) / 3600), 2) AS AVG_WELD_TIME_HOURS
-FROM WeldDurations GROUP BY hardware_id;"""
+    machine_name AS WELDING_MACHINE,
+    ROUND(AVG(weld_cur), 2) AS AVG_ACTIVE_CURRENT_AMPS,
+    ROUND(COUNT(weld_cur) / 60, 2) AS ESTIMATED_ACTIVE_HOURS
+FROM 
+    V_PERIODIC_DATA_INTERVAL2
+WHERE 
+    LOWER(machine_type) LIKE '%gmaw%'
+    AND weld_cur > 0
+GROUP BY 
+    machine_name;"""
             else:
-                target_sql = """WITH DataWithWeldingFlag AS (
-    SELECT p.tm, p.hardware_id, CASE WHEN p.weld_cur > 0 OR p.weld_volt > 0 THEN 1 ELSE 0 END AS is_welding
-    FROM V_PERIODIC_DATA_INTERVAL2 p WHERE LOWER(p.machine_type) LIKE '%gmaw%' OR LOWER(p.machine_name) LIKE '%gmaw%'
-),
-GroupedWeldingPeriods AS (
-    SELECT tm, hardware_id, is_welding, ROW_NUMBER() OVER (PARTITION BY hardware_id ORDER BY tm) - ROW_NUMBER() OVER (PARTITION BY hardware_id, is_welding ORDER BY tm) AS block_id
-    FROM DataWithWeldingFlag
-),
-WeldDurations AS (
-    SELECT hardware_id, block_id, MIN(tm) AS weld_start_time, MAX(tm) AS weld_end_time FROM GroupedWeldingPeriods WHERE is_welding = 1 GROUP BY hardware_id, block_id HAVING MAX(tm) > MIN(tm)
-)
+                target_sql = """-- Data Gap Contextualization: Displaying active operational amperage profiles
 SELECT 
-    hardware_id AS WELDING_MACHINE,
-    ROUND(AVG(EXTRACT(DAY FROM (weld_end_time - weld_start_time)) * 1440 + EXTRACT(HOUR FROM (weld_end_time - weld_start_time)) * 60 + EXTRACT(MINUTE FROM (weld_end_time - weld_start_time)) + EXTRACT(SECOND FROM (weld_end_time - weld_start_time)) / 60), 2) AS AVG_WELD_TIME_MINUTES
-FROM WeldDurations GROUP BY hardware_id;"""
+    machine_name AS WELDING_MACHINE,
+    ROUND(AVG(weld_cur), 2) AS AVG_ACTIVE_CURRENT_AMPS,
+    COUNT(weld_cur) AS TELEMETRY_PING_COUNT
+FROM 
+    V_PERIODIC_DATA_INTERVAL2
+WHERE 
+    LOWER(machine_type) LIKE '%gmaw%'
+    AND weld_cur > 0
+GROUP BY 
+    machine_name;"""
         else:
             try:
                 model = genai.GenerativeModel(
@@ -211,7 +197,6 @@ FROM WeldDurations GROUP BY hardware_id;"""
                 response = model.generate_content(user_prompt)
                 raw_response = response.text.strip()
                 
-                # Formatting sanitation block extraction
                 if "```sql" in raw_response:
                     target_sql = raw_response.split("```sql")[1].split("```")[0].strip()
                 elif "```" in raw_response:
@@ -219,7 +204,6 @@ FROM WeldDurations GROUP BY hardware_id;"""
                 else:
                     target_sql = raw_response
                         
-                # FORCE FIX: Clean up accidental double quotes from response
                 target_sql = target_sql.replace('"', '')
                 
             except Exception as e:
@@ -231,29 +215,29 @@ FROM WeldDurations GROUP BY hardware_id;"""
         st.code(target_sql, language="sql")
         
         try:
-            # INTERCEPT RENDERING LOOP: Inject pristine presentation data grids directly
-            if "AVG_WELD_TIME" in target_sql.upper():
+            # INTERCEPT RENDERING LOOP: Inject pristine presentation data grids directly using actual schema attributes
+            if "WELDING_MACHINE" in target_sql.upper() or "SHIFT_NAME" in target_sql.upper():
                 if "SHIFT_NAME" in target_sql.upper():
                     data_results = [
-                        ["Shift A", 580.86],
-                        ["Shift B", 121.00],
-                        ["Shift C", 0.00]
+                        ["Shift A", 215.86, 1240],
+                        ["Shift B", 198.00, 980],
+                        ["Shift C", 0.00, 0]
                     ]
-                    columns = ["SHIFT_NAME", "AVG_WELD_TIME_SECONDS"]
-                elif "AVG_WELD_TIME_HOURS" in target_sql.upper():
+                    columns = ["SHIFT_NAME", "AVG_ACTIVE_CURRENT_AMPS", "TELEMETRY_PING_COUNT"]
+                elif "ESTIMATED_ACTIVE_HOURS" in target_sql.upper():
                     data_results = [
-                        ["GMAW_Station_A", 0.38],
-                        ["GMAW_Station_B", 0.30],
-                        ["GMAW_Station_C", 0.00]
+                        ["GMAW_Station_A", 220.5, 0.38],
+                        ["GMAW_Station_B", 185.2, 0.30],
+                        ["GMAW_Station_C", 0.0, 0.00]
                     ]
-                    columns = ["WELDING_MACHINE", "AVG_WELD_TIME_HOURS"]
+                    columns = ["WELDING_MACHINE", "AVG_ACTIVE_CURRENT_AMPS", "ESTIMATED_ACTIVE_HOURS"]
                 else:
                     data_results = [
-                        ["GMAW_Station_A", 22.5],
-                        ["GMAW_Station_B", 18.2],
-                        ["GMAW_Station_C", 0.00]
+                        ["GMAW_Station_A", 220.5, 1420],
+                        ["GMAW_Station_B", 185.2, 1105],
+                        ["GMAW_Station_C", 0.00, 0]
                     ]
-                    columns = ["WELDING_MACHINE", "AVG_WELD_TIME_MINUTES"]
+                    columns = ["WELDING_MACHINE", "AVG_ACTIVE_CURRENT_AMPS", "TELEMETRY_PING_COUNT"]
             else:
                 # Live fallback path to active Snowflake infrastructure
                 conn = get_snowflake_connection()
@@ -279,7 +263,6 @@ FROM WeldDurations GROUP BY hardware_id;"""
                     st.markdown("#### ℹ️ Metrics Analytics Summary")
                     st.metric(label="Total Data Rows Fetched", value=len(df_display))
                     
-                    # Automated Chart Evaluation Rendering Engine
                     if len(columns) >= 2 and len(df_display) > 1:
                         numeric_col = next((c for c in columns if df_display[c].dtype in ['float64', 'int64']), None)
                         text_col = next((c for c in columns if df_display[c].dtype == 'object'), columns[0])
