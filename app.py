@@ -17,8 +17,9 @@ You are an expert Oracle and Snowflake SQL translation engine for Tata Steel.
 You must follow these strict database and syntax rules:
 
 1. TARGET TABLE RULE:
-- For any questions regarding 'weld time', 'welding duration', 'current utilization', or 'machine activity metrics', you MUST query the 'V_PERIODIC_DATA_INTERVAL2' view.
-- DO NOT use V_MACHINE_DERIVED and DO NOT use columns that do not exist.
+- Use V_PERIODIC_DATA_INTERVAL2 for raw telemetry values.
+- Use V_MACHINE_DERIVED for summarized or aggregated operational metrics.
+- Only use columns that actually exist.
 
 2. SYNTAX CRITICAL RULES:
 - NEVER use the 'AS' keyword when creating table or view aliases. (e.g., 'FROM table_name t1', NOT 'FROM table_name AS t1').
@@ -138,76 +139,25 @@ if user_prompt:
 
     # 6. Dynamic Generative Translation Path
     if not target_sql:
-        # QUICK FIX MEETING OVERRIDE: Intercept shift/welding questions using VALID columns
-        if (
-            "shift" in user_prompt.lower()
-            and (
-                "weld time" in user_prompt.lower()
-                or "welding duration" in user_prompt.lower()
+        try:
+            model = genai.GenerativeModel(
+                model_name="gemini-2.5-flash",
+                system_instruction=DATABASE_SCHEMA_CATALOG
             )
-        ):
-            target_sql = """SELECT 
-    shift_name, 
-    ROUND(AVG(weld_cur), 2) AS AVG_ACTIVE_CURRENT_AMPS,
-    COUNT(weld_cur) AS TELEMETRY_PING_COUNT
-FROM 
-    V_PERIODIC_DATA_INTERVAL2
-WHERE 
-    LOWER(machine_type) LIKE '%gmaw%'
-    AND weld_cur > 0
-GROUP BY 
-    shift_name;"""
-        elif (
-            "weld time" in user_prompt.lower()
-            or "welding duration" in user_prompt.lower()
-            or "average weld time" in user_prompt.lower()
-        ):
-            if "hour" in user_prompt.lower():
-                target_sql = """-- Data Gap Contextualization: Displaying hourly proxy metrics via signal counts
-SELECT 
-    machine_name AS WELDING_MACHINE,
-    ROUND(AVG(weld_cur), 2) AS AVG_ACTIVE_CURRENT_AMPS,
-    ROUND(COUNT(weld_cur) / 60, 2) AS ESTIMATED_ACTIVE_HOURS
-FROM 
-    V_PERIODIC_DATA_INTERVAL2
-WHERE 
-    LOWER(machine_type) LIKE '%gmaw%'
-    AND weld_cur > 0
-GROUP BY 
-    machine_name;"""
+            response = model.generate_content(user_prompt)
+            raw_response = response.text.strip()
+            
+            if "```sql" in raw_response:
+                target_sql = raw_response.split("```sql")[1].split("```")[0].strip()
+            elif "```" in raw_response:
+                target_sql = raw_response.split("```")[1].split("```")[0].strip()
             else:
-                target_sql = """-- Data Gap Contextualization: Displaying active operational amperage profiles
-SELECT 
-    machine_name AS WELDING_MACHINE,
-    ROUND(AVG(weld_cur), 2) AS AVG_ACTIVE_CURRENT_AMPS,
-    COUNT(weld_cur) AS TELEMETRY_PING_COUNT
-FROM 
-    V_PERIODIC_DATA_INTERVAL2
-WHERE 
-    LOWER(machine_type) LIKE '%gmaw%'
-    AND weld_cur > 0
-GROUP BY 
-    machine_name;"""
-        else:
-            try:
-                model = genai.GenerativeModel(
-                    model_name="gemini-2.5-flash",
-                    system_instruction=DATABASE_SCHEMA_CATALOG
-                )
-                response = model.generate_content(user_prompt)
-                raw_response = response.text.strip()
-                
-                if "```sql" in raw_response:
-                    target_sql = raw_response.split("```sql")[1].split("```")[0].strip()
-                elif "```" in raw_response:
-                    target_sql = raw_response.split("```")[1].split("```")[0].strip()
-                else:
-                    target_sql = raw_response
-                        
-                target_sql = target_sql.replace('"', '')
-                
-            except Exception as e:
-                st.error(f"GenAI Translation Engine Error: {e}")
+                target_sql = raw_response
+                    
+            target_sql = target_sql.replace('"', '')
+            
+        except Exception as e:
+            st.error(f"GenAI Translation Engine Error: {e}")
 
     # 7. Database Fetching and Rendering Workspace
     if target_sql:
@@ -215,40 +165,16 @@ GROUP BY
         st.code(target_sql, language="sql")
         
         try:
-            # INTERCEPT RENDERING LOOP: Inject pristine presentation data grids directly using actual schema attributes
-            if "WELDING_MACHINE" in target_sql.upper() or "SHIFT_NAME" in target_sql.upper():
-                if "SHIFT_NAME" in target_sql.upper():
-                    data_results = [
-                        ["Shift A", 215.86, 1240],
-                        ["Shift B", 198.00, 980],
-                        ["Shift C", 0.00, 0]
-                    ]
-                    columns = ["SHIFT_NAME", "AVG_ACTIVE_CURRENT_AMPS", "TELEMETRY_PING_COUNT"]
-                elif "ESTIMATED_ACTIVE_HOURS" in target_sql.upper():
-                    data_results = [
-                        ["GMAW_Station_A", 220.5, 0.38],
-                        ["GMAW_Station_B", 185.2, 0.30],
-                        ["GMAW_Station_C", 0.0, 0.00]
-                    ]
-                    columns = ["WELDING_MACHINE", "AVG_ACTIVE_CURRENT_AMPS", "ESTIMATED_ACTIVE_HOURS"]
-                else:
-                    data_results = [
-                        ["GMAW_Station_A", 220.5, 1420],
-                        ["GMAW_Station_B", 185.2, 1105],
-                        ["GMAW_Station_C", 0.00, 0]
-                    ]
-                    columns = ["WELDING_MACHINE", "AVG_ACTIVE_CURRENT_AMPS", "TELEMETRY_PING_COUNT"]
-            else:
-                # Live fallback path to active Snowflake infrastructure
-                conn = get_snowflake_connection()
-                cursor = conn.cursor()
-                cursor.execute(target_sql)
-                
-                columns = [col[0] for col in cursor.description]
-                data_results = cursor.fetchall()
-                
-                cursor.close()
-                conn.close()
+            # Removed all hardcoded intercepts. Query runs directly against your live Snowflake instance.
+            conn = get_snowflake_connection()
+            cursor = conn.cursor()
+            cursor.execute(target_sql)
+            
+            columns = [col[0] for col in cursor.description]
+            data_results = cursor.fetchall()
+            
+            cursor.close()
+            conn.close()
             
             if data_results:
                 df_display = pd.DataFrame(data_results, columns=columns)
@@ -271,7 +197,7 @@ GROUP BY
                             st.markdown(f"**Visual Distribution Matrix ({numeric_col}):**")
                             st.bar_chart(data=df_display, x=text_col, y=numeric_col)
             else:
-                st.info("Query compiled and delivered successfully, but Snowflake returned an empty dataset state.")
+                st.info("Query compiled cleanly, but Snowflake returned an empty dataset structure.")
                 
         except Exception as err:
             st.error(f"Database Query Execution Failure: {err}")
