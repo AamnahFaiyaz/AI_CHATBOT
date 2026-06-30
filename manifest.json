@@ -87,7 +87,7 @@
       }
     },
     "V_PERIODIC_DATA_INTERVAL2": {
-      "description": "High-frequency streaming IoT telemetry capturing live telemetry streams, diagnostic statuses, and consumption volumes from edge gateways.",
+      "description": "High-frequency streaming IoT telemetry. Use this view to calculate average weld time or duration by evaluating the intervals where MSTATUS is active or welding parameters are greater than zero.",
       "columns": {
         "PDID": "NUMBER/VARCHAR - Streaming data pipeline packet element log id",
         "HARDWARE_ID": "VARCHAR - Device physical source matching V_MACHINES.HARDWARE_ID",
