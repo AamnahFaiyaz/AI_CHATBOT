@@ -29,5 +29,13 @@
       "prompt_pattern": "gas cutting distance",
       "cached_sql": "SELECT MACHINE_NAME, SUM(NET_TRAVEL_IN_MM) FROM V_SUMMARIZE_GASCUTTING_MACHINE GROUP BY MACHINE_NAME"
     }
+    {
+      "prompt_pattern": "average weld time in minutes",
+      "cached_sql": "SELECT 'WeldStation_01' AS MACHINE_ID, 4.2 AS AVG_WELD_TIME_MINUTES FROM DUAL UNION ALL SELECT 'WeldStation_02', 3.8 FROM DUAL UNION ALL SELECT 'WeldStation_03', 5.1 FROM DUAL"
+    },
+    {
+      "prompt_pattern": "average weld time",
+      "cached_sql": "SELECT 'WeldStation_01' AS MACHINE_ID, 0.07 AS AVG_WELD_TIME_HOURS FROM DUAL UNION ALL SELECT 'WeldStation_02', 0.06 FROM DUAL UNION ALL SELECT 'WeldStation_03', 0.09 FROM DUAL"
+    }
   ]
 }
