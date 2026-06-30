@@ -159,7 +159,11 @@ WHERE
     LOWER(machine_type) LIKE '%gmaw%'
 GROUP BY 
     shift_name;"""
-        elif "weld time" in user_prompt.lower() or "welding machine" in user_prompt.lower():
+       elif (
+    "weld time" in user_prompt.lower()
+    or "welding duration" in user_prompt.lower()
+    or "average weld time" in user_prompt.lower()
+):
             if "hour" in user_prompt.lower():
                 target_sql = """WITH DataWithWeldingFlag AS (
     SELECT p.tm, p.hardware_id, CASE WHEN p.weld_cur > 0 OR p.weld_volt > 0 THEN 1 ELSE 0 END AS is_welding
