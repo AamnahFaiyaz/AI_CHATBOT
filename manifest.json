@@ -1,7 +1,7 @@
 {
   "manifest_version": "1.0.0",
   "project": "Tata Steel Industrial IoT Chatbot",
-"schema_definitions": {
+  "schema_definitions": {
     "V_MACHINE_TYPE": {
       "description": "Master categories lookup for classifying plant machinery (e.g., GMAW, Gas Cutters).",
       "columns": {
@@ -87,7 +87,7 @@
       }
     },
     "V_PERIODIC_DATA_INTERVAL2": {
-      "description": "High-frequency streaming IoT telemetry. Use this view to calculate average weld time or duration by evaluating the intervals where MSTATUS is active or welding parameters are greater than zero.",
+      "description": "High-frequency streaming IoT telemetry capturing live telemetry streams, diagnostic statuses, and consumption volumes from edge gateways.",
       "columns": {
         "PDID": "NUMBER/VARCHAR - Streaming data pipeline packet element log id",
         "HARDWARE_ID": "VARCHAR - Device physical source matching V_MACHINES.HARDWARE_ID",
@@ -210,19 +210,13 @@
     }
   },
   "saved_questions": [
-    "saved_questions": [
     {
-      "prompt_pattern": "weld time",
-      "cached_sql": "SELECT 'GMAW_Station_A' AS WELDING_MACHINE, 22.5 AS AVG_WELD_TIME_MINUTES FROM DUAL UNION ALL SELECT 'GMAW_Station_B', 18.2 FROM DUAL UNION ALL SELECT 'GMAW_Station_C', 25.4 FROM DUAL"
-    }
-  ]
-    {
-      "prompt_pattern": "total anomalies",
-      "cached_sql": "SELECT COUNT(SPAN) as total_anomalies FROM V_DEVIATION"
+      "prompt_pattern": "average weld time",
+      "cached_sql": "SELECT hardware_id AS WELDING_MACHINE, ROUND(AVG(weld_duration_seconds) / 60, 2) AS AVG_WELD_TIME_MINUTES FROM V_PERIODIC_DATA_INTERVAL2 GROUP BY hardware_id;"
     },
     {
-      "prompt_pattern": "gas cutting distance",
-      "cached_sql": "SELECT MACHINE_NAME, SUM(NET_TRAVEL_IN_MM) FROM V_SUMMARIZE_GASCUTTING_MACHINE GROUP BY MACHINE_NAME"
+      "prompt_pattern": "welding duration by shift",
+      "cached_sql": "SELECT shift_name, ROUND(AVG(weld_duration_seconds), 2) AS AVG_WELD_TIME_SECONDS FROM V_PERIODIC_DATA_INTERVAL2 WHERE LOWER(machine_type) LIKE '%gmaw%' GROUP BY shift_name;"
     }
   ]
 }
