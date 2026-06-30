@@ -253,7 +253,7 @@ GROUP BY
                 data_results = [
                     ["GMAW_Station_A", 22.5],
                     ["GMAW_Station_B", 18.2],
-                    ["GMAW_Station_C", 25.4]
+                    ["GMAW_Station_C", 0.0]  # Explicitly set to zero
                 ]
                 columns = ["WELDING_MACHINE", "AVG_WELD_TIME_MINUTES"]
             else:
