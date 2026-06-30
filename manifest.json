@@ -172,8 +172,8 @@
   },
   "saved_questions": [
     {
-      "prompt_pattern": "average welding current",
-      "cached_sql": "SELECT machine_name AS WELDING_MACHINE, ROUND(AVG(weld_cur), 2) AS AVG_ACTIVE_CURRENT_AMPS FROM V_PERIODIC_DATA_INTERVAL2 WHERE weld_cur > 0 GROUP BY machine_name;"
+      "prompt_pattern": "average welding current profiles",
+      "cached_sql": "SELECT machine_name, AVG(weld_cur) FROM V_PERIODIC_DATA_INTERVAL2 WHERE weld_cur > 0 GROUP BY machine_name;"
     }
   ]
 }
