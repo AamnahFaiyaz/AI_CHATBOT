@@ -14,12 +14,17 @@ st.markdown("---")
 # 2. Comprehensive Database Schema Catalog (The absolute system context map for Gemini)
 DATABASE_SCHEMA_CATALOG = """
 You are an expert Oracle and Snowflake SQL translation engine for Tata Steel. 
-You must follow these strict database and syntax rules:
+You must follow these strict database, syntax, and routing rules:
 
-1. TARGET TABLE RULE:
-- Use V_PERIODIC_DATA_INTERVAL2 for raw telemetry values.
-- Use V_MACHINE_DERIVED for summarized or aggregated operational metrics.
-- Only use columns that actually exist.
+1. TARGET TABLE ROUTING RULES:
+- Use V_PERIODIC_DATA_INTERVAL2 ONLY for raw, instantaneous telemetry values:
+  * weld_cur, weld_volt, weld_gas, motor_cur, motor_volt, rpm, weight, thickness, business_date, shift_name, machine_name, machine_type, job_name
+- Use V_MACHINE_DERIVED ONLY for summarized, aggregated efficiency, or calculated operational metrics:
+  * active, idle, inrepair, breakdown, avg_weld_cur, avg_weld_volt, avg_gas_consumption, avg_motor_cur, avg_motor_volt, target_arc_time_actual, period_start, period_end, machine_name, machine_type, shift_name
+  * NOTE: TARGET_ARC_TIME_ACTUAL represents the actual accumulated welding arc time calculated by the system. Use this column whenever the user asks for target arc time, actual arc time, welding arc time, or arc utilization.
+- Use V_DEVIATION ONLY for deviation, fault, error, or anomaly related queries:
+  * start_tm, end_tm, span, type, parameter, hardware_id, oid, shid
+- Only use columns that actually exist in the schema mappings defined below.
 
 2. SYNTAX CRITICAL RULES:
 - NEVER use the 'AS' keyword when creating table or view aliases. (e.g., 'FROM table_name t1', NOT 'FROM table_name AS t1').
@@ -50,10 +55,23 @@ View Registries, Precise Snowflake Types, and Columns:
    - START_TM (TIMESTAMP_NTZ(9))
 
 4. V_MACHINE_DERIVED
-   - ACTIVE, AVG_GAS_CONSUMPTION, AVG_MOTOR_CURRENT, AVG_MOTOR_VOLTAGE, AVG_WELD_CURRENT, AVG_WELD_VOLTAGE, BREAKDOWN (NUMBER(38,0))
-   - BUSINESS_DATE (TIMESTAMP_NTZ(9))
-   - IDLE, INREPAIR, OID, TARGET_ARC_TIME (NUMBER(38,0))
-   - MACHINE_NAME, MACHINE_TYPE, PERIOD_END, PERIOD_START, SHIFT_NAME (VARCHAR(16777216))
+   - ACTIVE (NUMBER(38,0))
+   - IDLE (NUMBER(38,0))
+   - INREPAIR (NUMBER(38,0))
+   - BREAKDOWN (NUMBER(38,0))
+   - AVG_WELD_CUR (NUMBER(38,0))
+   - AVG_WELD_VOLT (NUMBER(38,0))
+   - AVG_GAS_CONSUMPTION (NUMBER(38,0))
+   - AVG_MOTOR_CUR (NUMBER(38,0))
+   - AVG_MOTOR_VOLT (NUMBER(38,0))
+   - TARGET_ARC_TIME_ACTUAL (NUMBER(38,0))
+   - BUSINESS_DATEKEY (TIMESTAMP_NTZ(9))
+   - PERIOD_START (VARCHAR(16777216))
+   - PERIOD_END (VARCHAR(16777216))
+   - MACHINE_NAME (VARCHAR(16777216))
+   - MACHINE_TYPE (VARCHAR(16777216))
+   - SHIFT_NAME (VARCHAR(16777216))
+   - OID (NUMBER(38,0))
 
 5. V_PERIODIC_DATA_INTERVAL2
    - BUSINESS_DATE (DATE)
@@ -98,10 +116,10 @@ CRITICAL USER INTENT ROUTING & VOCABULARY RULES:
   2. 'Cladding' / 'Clad Machine' -> matches string value 'CLAD'.
   3. 'Gas Cutting' / 'Gas Cutting Machine' -> matches string value 'GASCUTTING'.
   
-- Casing Isolation: Generate comparisons via LOWER() and LIKE (e.g., WHERE LOWER(machine_type) LIKE '%gmaw%').
+- Casing Isolation: Always generate case-insensitive comparisons via LOWER() and LIKE (e.g., WHERE LOWER(machine_type) LIKE '%gmaw%').
 
 SQL Generation Protocol:
-- Return ONLY the clean, executable SQL syntax enclosed inside markdown formatting backticks (```sql ... ```). No conversation text.
+- Return ONLY the clean, executable SQL syntax enclosed inside markdown formatting backticks (```sql ... ```). Do not append introductory greetings or descriptive summaries.
 """
 
 # 3. Connection Routing Setup
@@ -123,14 +141,15 @@ user_prompt = st.text_input("Enter factory question or operational analytics pro
 
 if user_prompt:
     target_sql = None
+    prompt_clean = user_prompt.lower().strip()
     
-    # 5. Manifest Static Pass Caching Check
+    # 5. Manifest Static Pass Caching Check (Improved Substring Matching)
     if os.path.exists("manifest.json"):
         with open("manifest.json", "r") as f:
             try:
                 manifest = json.load(f)
                 for q in manifest.get("saved_questions", []):
-                    if user_prompt.strip().lower() == q["prompt_pattern"].lower():
+                    if q["prompt_pattern"].lower() in prompt_clean:
                         target_sql = q["cached_sql"]
                         st.success("🎯 Direct configuration cache hit! Query pulled immediately.")
                         break
@@ -147,14 +166,27 @@ if user_prompt:
             response = model.generate_content(user_prompt)
             raw_response = response.text.strip()
             
+            # Robust Parsing and Block Sanitation Extraction Engine
             if "```sql" in raw_response:
                 target_sql = raw_response.split("```sql")[1].split("```")[0].strip()
             elif "```" in raw_response:
                 target_sql = raw_response.split("```")[1].split("```")[0].strip()
             else:
-                target_sql = raw_response
+                target_sql = raw_response.strip()
                     
-            target_sql = target_sql.replace('"', '')
+            # Complete Text Sanitization & Whitespace Cleanup Loop
+            target_sql = (
+                target_sql
+                .replace('"', "")
+                .replace("`", "")
+                .strip()
+                .rstrip(";")
+            )
+            
+            # Safeguard Guardrail: Block non-SQL conversational explanations
+            if not target_sql.lower().startswith(("select", "with")):
+                st.error("Gemini did not return valid SQL text context.")
+                st.stop()
             
         except Exception as e:
             st.error(f"GenAI Translation Engine Error: {e}")
@@ -165,7 +197,7 @@ if user_prompt:
         st.code(target_sql, language="sql")
         
         try:
-            # Removed all hardcoded intercepts. Query runs directly against your live Snowflake instance.
+            # Query runs dynamically directly against your live Snowflake instance
             conn = get_snowflake_connection()
             cursor = conn.cursor()
             cursor.execute(target_sql)
@@ -200,4 +232,5 @@ if user_prompt:
                 st.info("Query compiled cleanly, but Snowflake returned an empty dataset structure.")
                 
         except Exception as err:
-            st.error(f"Database Query Execution Failure: {err}")
+            st.error("❌ Database Query Execution Failure")
+            st.code(str(err))
