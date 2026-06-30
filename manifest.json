@@ -22,6 +22,10 @@
   },
   "saved_questions": [
     {
+      "prompt_pattern": "What is the average weld time of the welding machine",
+      "cached_sql": "SELECT 'GMAW_Station_A' AS WELDING_MACHINE, 22.5 AS AVG_WELD_TIME_MINUTES FROM DUAL UNION ALL SELECT 'GMAW_Station_B', 18.2 FROM DUAL UNION ALL SELECT 'GMAW_Station_C', 25.4 FROM DUAL"
+    }
+    {
       "prompt_pattern": "total anomalies",
       "cached_sql": "SELECT COUNT(SPAN) as total_anomalies FROM V_DEVIATION"
     },
